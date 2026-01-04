@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Minecraft Server Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #1e1e1e;
+      color: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      min-height: 100vh;
+      padding: 50px 20px;
+    }
+
+    .panel {
+      background-color: #111;
+      border-radius: 12px;
+      padding: 30px 40px;
+      text-align: center;
+      box-shadow: 0 0 15px #0f0;
+      max-width: 400px;
+      width: 100%;
+    }
+
+    h1, h2 {
+      color: #0f0;
+    }
+
+    button, a.button {
+      background-color: #0f0;
+      color: #111;
+      border: none;
+      padding: 12px 20px;
+      margin: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-block;
+    }
+
+    button:hover, a.button:hover {
+      background-color: #0c0;
+    }
+
+    #status {
+      margin: 20px 0;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="panel">
+    <h1>Minecraft Server Dashboard</h1>
+    <h2>Server Status</h2>
+    <div id="status">Loading...</div>
+
+    <a href="https://aternos.org/server/" target="_blank" class="button">▶ Start Server</a>
+    <button onclick="copyIP()">📋 Copy Server IP</button>
+  </div>
+
+  <script>
+    const serverAddress = "sycho.aternos.me"; // <-- Replace with your Aternos server address
+
+    // Fetch server status
+    fetch(`https://api.mcsrvstat.us/2/${serverAddress}`)
+      .then(res => res.json())
+      .then(data => {
+        const statusDiv = document.getElementById("status");
+        if (data.online) {
+          statusDiv.innerHTML = `
+            🟢 ONLINE<br>
+            Players: ${data.players.online || 0}/${data.players.max || 0}<br>
+            Version: ${data.version || "Unknown"}
+          `;
+        } else {
+          statusDiv.innerHTML = "🔴 OFFLINE";
+        }
+      })
+      .catch(err => {
+        document.getElementById("status").innerHTML = "⚠ Error fetching status";
+        console.error(err);
+      });
+
+    // Copy IP button
+    function copyIP() {
+      navigator.clipboard.writeText(serverAddress).then(() => {
+        alert(`Server IP copied: ${serverAddress}`);
+      });
+    }
+
+    // Optional: auto-refresh every 30 seconds
+    setInterval(() => location.reload(), 30000);
+  </script>
+
+</body>
+</html>
