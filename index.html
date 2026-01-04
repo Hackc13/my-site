@@ -467,7 +467,30 @@
             }
         });
     </script>
+    <h2>Minecraft Server Status</h2>
+<div id="status">Loading...</div>
+
+<script>
+fetch("https://api.mcsrvstat.us/2/sycho.aternos.me")
+  .then(res => res.json())
+  .then(data => {
+    if (data.online) {
+      document.getElementById("status").innerHTML =
+        "🟢 ONLINE<br>" +
+        "Players: " + data.players.online + "/" + data.players.max +
+        "<br>Version: " + data.version;
+    } else {
+      document.getElementById("status").innerHTML = "🔴 OFFLINE";
+    }
+  });
+</script>
+
+    <a href="https://aternos.org/server/" target="_blank">
+  ▶ Start Minecraft Server (Login Required)
+</a>
+
 
 </body>
 
 </html>
+
