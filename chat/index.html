@@ -1,144 +1,163 @@
-<!-- chat/index.html -->
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chinnu Hub Chat</title>
-    <link rel="stylesheet" href="style.css">
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
-    <script src="firebase.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Chinnu Hub Chat</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-storage-compat.js"></script>
+<script src="firebase.js"></script>
 </head>
-
 <body>
-    <!-- Login Screen -->
-    <div class="container" id="login-screen">
-        <h2>Login with Google</h2>
-        <button id="google-login">Login with Google</button>
-    </div>
 
-    <!-- Profile Setup -->
-    <div class="container hidden" id="profile-setup">
-        <h2>Profile Setup</h2>
-        <input type="text" id="first-name" placeholder="First Name" required>
-        <input type="text" id="last-name" placeholder="Last Name" required>
-        <input type="date" id="dob" required>
-        <button id="save-profile">Save Profile</button>
-    </div>
+<!-- Dark Mode Toggle -->
+<label id="darkModeToggle"><input type="checkbox"> Dark Mode</label>
 
-    <!-- Dashboard -->
-    <div class="container hidden" id="dashboard">
-        <h2>Dashboard</h2>
-        <button id="create-chat">Create Chat</button>
-        <button id="join-chat">Join Chat (6-digit code)</button>
-        <input type="text" id="join-code" placeholder="Enter 6-digit code" style="display:none;">
-        <button id="join-confirm" style="display:none;">Join</button>
-    </div>
+<!-- Login Screen -->
+<div class="container" id="login-screen">
+    <h2>Login with Google</h2>
+    <button id="google-login">Login with Google</button>
+</div>
 
-    <!-- Chat Room -->
-    <div class="container hidden" id="chat-room">
-        <h2>Chat Room</h2>
-        <div id="chat-messages"></div>
-        <input type="text" id="chat-input" placeholder="Type your message">
-        <button id="send-msg">Send</button>
-    </div>
+<!-- Profile Setup -->
+<div class="container hidden" id="profile-setup">
+    <h2>Profile Setup</h2>
+    <input type="text" id="first-name" placeholder="First Name" required>
+    <input type="text" id="last-name" placeholder="Last Name" required>
+    <input type="date" id="dob" required>
+    <label>Profile Picture:</label>
+    <input type="file" id="profile-pic">
+    <button id="save-profile">Save Profile</button>
+</div>
 
-    <script>
-        // Screens
-        const loginScreen = document.getElementById('login-screen');
-        const profileScreen = document.getElementById('profile-setup');
-        const dashboardScreen = document.getElementById('dashboard');
-        const chatRoomScreen = document.getElementById('chat-room');
+<!-- Dashboard -->
+<div class="container hidden" id="dashboard">
+    <h2>Dashboard</h2>
+    <button id="create-chat">Create Chat</button>
+    <button id="join-chat">Join Chat (6-digit code)</button>
+    <input type="text" id="join-code" placeholder="Enter 6-digit code" style="display:none;">
+    <button id="join-confirm" style="display:none;">Join</button>
+    <p id="invite-link" style="margin-top:1rem;"></p>
+</div>
 
-        let currentUser = null;
-        let currentChatId = null;
+<!-- Chat Room -->
+<div class="container hidden" id="chat-room">
+    <h2>Chat Room</h2>
+    <div id="chat-messages"></div>
+    <input type="text" id="chat-input" placeholder="Type your message">
+    <button id="send-msg">Send</button>
+</div>
 
-        // --- Google Login ---
-        document.getElementById('google-login').onclick = () => {
-            const provider = new firebase.auth.GoogleAuthProvider();
-            auth.signInWithPopup(provider).then((result) => {
-                currentUser = result.user;
-                loginScreen.classList.add('hidden');
-                profileScreen.classList.remove('hidden');
-            });
-        };
+<script>
+const darkModeToggle = document.querySelector('#darkModeToggle input');
+darkModeToggle.addEventListener('change', () => {
+    document.body.classList.toggle('dark-mode', darkModeToggle.checked);
+});
 
-        // --- Save Profile ---
-        document.getElementById('save-profile').onclick = () => {
-            const first = document.getElementById('first-name').value;
-            const last = document.getElementById('last-name').value;
-            const dob = document.getElementById('dob').value;
-            if (!first || !last || !dob) return alert('Fill all fields');
-            db.collection('users').doc(currentUser.uid).set({ first, last, dob });
-            profileScreen.classList.add('hidden');
-            dashboardScreen.classList.remove('hidden');
-        };
+// Screens
+const loginScreen = document.getElementById('login-screen');
+const profileScreen = document.getElementById('profile-setup');
+const dashboardScreen = document.getElementById('dashboard');
+const chatRoomScreen = document.getElementById('chat-room');
 
-        // --- Dashboard ---
-        document.getElementById('create-chat').onclick = async () => {
-            const chatRef = await db.collection('chats').add({ createdBy: currentUser.uid, members: [currentUser.uid] });
-            currentChatId = chatRef.id;
-            alert(`Chat created! Code: ${currentChatId.substr(0, 6)}`);
-            dashboardScreen.classList.add('hidden');
-            chatRoomScreen.classList.remove('hidden');
-            listenMessages();
-        };
+let currentUser = null;
+let currentChatId = null;
+let profilePicUrl = null;
 
-        document.getElementById('join-chat').onclick = () => {
-            document.getElementById('join-code').style.display = 'block';
-            document.getElementById('join-confirm').style.display = 'inline-block';
-        };
+// Google Login
+document.getElementById('google-login').onclick = () => {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).then(result => {
+        currentUser = result.user;
+        loginScreen.classList.add('hidden');
+        profileScreen.classList.remove('hidden');
+    });
+};
 
-        document.getElementById('join-confirm').onclick = async () => {
-            const code = document.getElementById('join-code').value;
-            if (!code) return alert('Enter 6-digit code');
-            const chats = await db.collection('chats').get();
-            const chatDoc = chats.docs.find(d => d.id.startsWith(code));
-            if (!chatDoc) return alert('Chat not found');
-            currentChatId = chatDoc.id;
-            await db.collection('chats').doc(currentChatId).update({
-                members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
-            });
-            dashboardScreen.classList.add('hidden');
-            chatRoomScreen.classList.remove('hidden');
-            listenMessages();
-        };
+// Save Profile
+document.getElementById('save-profile').onclick = async () => {
+    const first = document.getElementById('first-name').value;
+    const last = document.getElementById('last-name').value;
+    const dob = document.getElementById('dob').value;
+    const file = document.getElementById('profile-pic').files[0];
+    if (!first || !last || !dob) return alert('Fill all fields');
 
-        // --- Chat Room ---
-        const sendMsgBtn = document.getElementById('send-msg');
-        const chatInput = document.getElementById('chat-input');
-        const chatMessagesDiv = document.getElementById('chat-messages');
+    if(file) {
+        const storageRef = storage.ref('profilePics/' + currentUser.uid);
+        await storageRef.put(file);
+        profilePicUrl = await storageRef.getDownloadURL();
+    }
 
-        sendMsgBtn.onclick = async () => {
-            const text = chatInput.value.trim();
-            if (!text) return;
-            await db.collection('chats').doc(currentChatId).collection('messages').add({
-                sender: currentUser.displayName,
-                text,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            chatInput.value = '';
-        };
+    await db.collection('users').doc(currentUser.uid).set({ first, last, dob, profilePicUrl });
+    profileScreen.classList.add('hidden');
+    dashboardScreen.classList.remove('hidden');
+};
 
-        function listenMessages() {
-            db.collection('chats').doc(currentChatId).collection('messages').orderBy('timestamp')
-                .onSnapshot(snapshot => {
-                    chatMessagesDiv.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const msg = doc.data();
-                        const div = document.createElement('div');
-                        div.classList.add('message');
-                        div.classList.add(msg.sender === currentUser.displayName ? 'user' : 'other');
-                        div.textContent = `${msg.sender}: ${msg.text}`;
-                        chatMessagesDiv.appendChild(div);
-                        chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
-                    });
-                });
-        }
-    </script>
+// Dashboard
+document.getElementById('create-chat').onclick = async () => {
+    const chatRef = await db.collection('chats').add({ createdBy: currentUser.uid, members: [currentUser.uid] });
+    currentChatId = chatRef.id;
+    document.getElementById('invite-link').innerText = `Invite Link: ${window.location.href}?chat=${currentChatId.substr(0,6)}`;
+    dashboardScreen.classList.add('hidden');
+    chatRoomScreen.classList.remove('hidden');
+    listenMessages();
+};
+
+document.getElementById('join-chat').onclick = () => {
+    document.getElementById('join-code').style.display = 'block';
+    document.getElementById('join-confirm').style.display = 'inline-block';
+};
+
+document.getElementById('join-confirm').onclick = async () => {
+    const code = document.getElementById('join-code').value;
+    if(!code) return alert('Enter 6-digit code');
+    const chats = await db.collection('chats').get();
+    const chatDoc = chats.docs.find(d => d.id.startsWith(code));
+    if(!chatDoc) return alert('Chat not found');
+    currentChatId = chatDoc.id;
+    await db.collection('chats').doc(currentChatId).update({
+        members: firebase.firestore.FieldValue.arrayUnion(currentUser.uid)
+    });
+    dashboardScreen.classList.add('hidden');
+    chatRoomScreen.classList.remove('hidden');
+    listenMessages();
+};
+
+// Chat Room
+const sendMsgBtn = document.getElementById('send-msg');
+const chatInput = document.getElementById('chat-input');
+const chatMessagesDiv = document.getElementById('chat-messages');
+
+sendMsgBtn.onclick = async () => {
+    const text = chatInput.value.trim();
+    if(!text) return;
+    await db.collection('chats').doc(currentChatId).collection('messages').add({
+        sender: currentUser.displayName,
+        text,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    chatInput.value = '';
+};
+
+function listenMessages() {
+    db.collection('chats').doc(currentChatId).collection('messages').orderBy('timestamp')
+    .onSnapshot(snapshot => {
+        chatMessagesDiv.innerHTML = '';
+        snapshot.forEach(doc => {
+            const msg = doc.data();
+            const div = document.createElement('div');
+            div.classList.add('message');
+            div.classList.add(msg.sender === currentUser.displayName ? 'user' : 'other');
+            div.textContent = `${msg.sender}: ${msg.text}`;
+            chatMessagesDiv.appendChild(div);
+            chatMessagesDiv.scrollTop = chatMessagesDiv.scrollHeight;
+        });
+    });
+}
+</script>
+
 </body>
-
 </html>
