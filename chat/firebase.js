@@ -1,5 +1,4 @@
 // chat/firebase.js
-
 // Replace with your Firebase config
 const firebaseConfig = {
     apiKey: "YOUR_API_KEY",
@@ -14,3 +13,4 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+const storage = firebase.storage();
